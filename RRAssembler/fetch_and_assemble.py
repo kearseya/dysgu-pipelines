@@ -220,7 +220,8 @@ def main(bams_glob, chain_file, ref, pad, pfix="chained_and_unchained", OUT="reg
                     pe=pe,
                     pfix=pfix,
                     k=k,
-                    base=base),
+                    base=base,
+                    ref=ref),
                     shell=True, stderr=PIPE, stdout=PIPE)
                 c = out.communicate()
                 #print("c1")
