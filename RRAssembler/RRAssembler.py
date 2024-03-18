@@ -10,10 +10,10 @@ import plot_contigs
 @click.group(name="pipe", invoke_without_command=True)
 @click.option("-b", "--bam-glob", default="/mnt/breast/*.*am")
 @click.option("-c", "--chain-file", default="../chain_link/chain_out_1/t20_p0.05-0.35/found_chains_p0.2_t20/all_svs.unique.chains.csv")
-@click.option("-r", "--ref", defualt="/mnt/scwc0010/hg38.fa")
+@click.option("-r", "--ref", default="/mnt/scwc0010/hg38.fa")
 @click.option("-p", "--pad", default=500)
 @click.pass_context
-def pipe(ctx, bam_glob, chain_filea, ref, pad):
+def pipe(ctx, bam_glob, chain_file, ref, pad):
     ctx.ensure_object(dict)
     ctx.obj["bam_glob"] = bam_glob
     ctx.obj["chain_file"] = chain_file

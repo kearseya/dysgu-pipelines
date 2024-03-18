@@ -49,4 +49,4 @@ COPY counts /app/counts
 COPY RRAssembler /app/RRAssembler
 
 # compile contig assembly
-RUN cd /app/RRAssembler/; ./compile_commands.sh; cd /app
+RUN cd /app/RRAssembler/; chmod +x compile_commands.sh; ./compile_commands.sh; cd /app

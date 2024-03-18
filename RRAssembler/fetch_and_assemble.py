@@ -143,6 +143,8 @@ def main(bams_glob, chain_file, ref, pad, pfix="chained_and_unchained", OUT="reg
 
     # Group data by sample and recursively find reads for each breaksite
     grps = data.groupby("Sample")
+    if not os.path.exists(OUT):
+        os.mkdir(OUT)
 
     for sample, df in grps:
 
