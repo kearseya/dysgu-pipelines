@@ -429,7 +429,7 @@ def normalise(ctx):
                 arr[i, j] = sub
                 x.append(j), y.append(i), z.append(sub)
  
-        f = RBFInterpolator(x, y, z, smooth=5)
+        f = RBFInterpolator(x, y, z, smoothing=5)
         z = f(x, y)
 
         if ctx.obj["plot_inter"] == True:
