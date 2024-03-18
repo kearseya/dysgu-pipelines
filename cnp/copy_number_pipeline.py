@@ -428,9 +428,20 @@ def normalise(ctx):
                 sub = v - median
                 arr[i, j] = sub
                 x.append(j), y.append(i), z.append(sub)
- 
-        f = RBFInterpolator(x, y, z, smoothing=5)
-        z = f(x, y)
+
+        ## legacy so might get removed
+        # rbf = Rbf(x, y, z)
+        # z = rbf(x, y)
+        ## calculate epsilon as previous for same kernel
+        xi = np.stack([x, y])
+        ximax = np.amax(xi, axis=1)
+        ximin = np.amin(xi, axis=1)
+        edges = ximax - ximin
+        edges = edges[np.nonzero(edges)]
+        epsilon = np.power(np.prod(edges)/len(x), 1.0/len(edges))
+        
+        rbf = RBFInterpolator(np.column_stack([x, y]), np.array(z), smoothing=5, kernel="multiquadric", epsilon=epsilon)
+        z = rbf(np.column_stack([x, y]))
 
         if ctx.obj["plot_inter"] == True:
             fig = plt.figure()
