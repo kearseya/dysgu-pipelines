@@ -2232,7 +2232,7 @@ def gainloss(ctx):
             text = ax["gl"].annotate(f"{t}: {round(spearman_rank[t].statistic, 2)} {round(spearman_rank[t].pvalue, 3)}\n", xycoords=text, xy=(0,-0.5), verticalalignment="bottom", color=line_color[t])
         text = ax["gl"].annotate("Mann Whitney U:\n", xycoords=text, xy=(0,-0.5), verticalalignment="bottom")
         for t in ["gain", "loss", "total"]:
-            text = ax["gl"].annotate(f"{t}: {round(min(recursive_partition[t]), 3)} ({round(gl['tl'].iloc[np.argmin(recursive_partition[t])], 2)})\n", xycoords=text, xy=(0,-0.5), verticalalignment="bottom", color=line_color[t])
+            text = ax["gl"].annotate(f"{t}: {conv_mathtext(min(recursive_partition[t]))} ({round(gl['tl'].iloc[np.argmin(recursive_partition[t])], 2)})\n", xycoords=text, xy=(0,-0.5), verticalalignment="bottom", color=line_color[t])
             # statsstr += r'\textcolor{red}{gain}: ' + f"{round(min(recursive_partition['gain']), 3)} ({round(gl['tl'].iloc[np.argmin(recursive_partition['gain'])], 3)})" + "\n"
             # statsstr += r'\textcolor{red}{loss}: ' + f"{round(min(recursive_partition['loss']), 3)} ({round(gl['tl'].iloc[np.argmin(recursive_partition['loss'])], 3)})" + "\n"
             # statsstr += r'\textcolor{red}{total}: ' + f"{round(min(recursive_partition['total']), 3)} ({round(gl['tl'].iloc[np.argmin(recursive_partition['total'])], 3)})"
