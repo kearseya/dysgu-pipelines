@@ -190,7 +190,7 @@ def read_file(fp, outdir, tl, cytoband, cnp, prob_thresholds, su_thresholds, siz
                 continue
         start = l.pos
         end = l.stop #info["END"]
-        if sv_type in {"DEL", "INV"}: #, "INS"}:
+        if sv_type in {"DEL", "INV", "DUP"}: #, "INS"}:
             if abs(end-start) <= size_threshold: # remove small deletions and inversions (default 500bp)
                 continue
         chr1 = l.contig.replace("chr", "")

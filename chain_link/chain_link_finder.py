@@ -729,7 +729,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
                     source = (name, int(start1), int(start1), low_size-aof)
                     destination = (name, int(end1), int(end1), low_size-aof)
                     #print(source, destination)
-                    circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.1)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
+                    circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.2)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
                 elif chr1 != chr2 and name in order_of_chr and name2 in order_of_chr: 
                     #start2 = start #l.info["CHR2_POS"]
                     #end2 = start2
@@ -737,7 +737,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
                 else:
                     continue
             for t in tra_list:
-                circle.chord_plot(t[0], t[1], facecolor="grey", linewidth=0.1)
+                circle.chord_plot(t[0], t[1], facecolor="grey", linewidth=0.2)
 
             ## plot links
             tra_list = []
@@ -754,14 +754,14 @@ def run(ctx, prob, breaks, chrom_len, plot):
                             source = (name, int(start1), int(start2), low_size-aof)
                             destination = (name, int(end1), int(end2), low_size-aof)
                             #print(source, destination)
-                            circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.1)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
+                            circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.4)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
                         elif chr1 != chr2 and name in order_of_chr and name2 in order_of_chr: 
                             #end2 = start2
                             tra_list.append(((name, int(start1), int(start2), low_size-aof), (name2, int(end1), int(end2), low_size-aof), color))
                         else:
                             continue
                     for t in tra_list:
-                        circle.chord_plot(t[0], t[1], facecolor=t[2], edgecolor=t[2], linewidth=0.1)
+                        circle.chord_plot(t[0], t[1], facecolor=t[2], edgecolor=t[2], linewidth=0.4)
             
             circle.figure.savefig(f"{OUTDIR}/circos/{sample}.svg")
        
