@@ -37,7 +37,7 @@ class DictParamType(click.ParamType):
 
 @click.group(name="main", invoke_without_command=True)
 @click.argument("indir", type=click.Path(exists=True))
-@click.option("-o", "--outdir", default="chain_out")
+@click.option("-o", "--outdir", default="count_output")
 @click.option("-t", "--tl", default="sample_pairs.csv")
 @click.option("-s", "--sep-thresh", default=3.81)
 @click.option("-e", "--sample-col", default="tumor_db")
@@ -129,7 +129,7 @@ def count(ctx, save):
                 #if list(line.filter.keys())[0] != "lowProb" or float(line.samples[s]["PROB"]) > 0.2 or float(line.samples[s]["SU"]) > 4: 
                 sv_type = line.info["SVTYPE"]
                 if float(line.samples[s]["PROB"]) >= prob_thresholds[sv_type]:
-                    if (sv_type != "TRA" and line.stop-line.pos >= ctx.obj["size_thresh"]) or sv_type == "TRA":
+                    if (sv_type != "TRA" and line.stop-line.pos >= ctx.obj["size_thresh"]) or sv_type in {"TRA", "INS"}:
                         counts[s][sv_type] += 1
         
         elif fmt == "csv":
@@ -223,6 +223,8 @@ def length(ctx, save):
 @click.option("--hist", default=False, is_flag=True)
 @click.pass_context
 def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_lines, bar_numbers, bar_scale, box, hist):
+    mpl.rcParams['axes.spines.right'] = False
+    mpl.rcParams['axes.spines.top'] = False
     df = ctx.invoke(count)
     var = ["DEL", "INS", "INV", "DUP", "TRA"] # df.columns[2:].tolist()
     ## reorder table
@@ -336,7 +338,8 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
         if save == False:
             plt.show()
         else:
-            plt.savefig(f"{file}_variant_type_stacked_bat_plot.png")
+            plt.savefig(f"{ctx.obj['outdir']}/variant_type_stacked_bat_plot.png")
+            plt.clf()
     
     ## box plot ##
     if box == True:
@@ -374,6 +377,7 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
         plt.plot([], c="red", label="short")
         plt.legend()
         plt.xticks(ticks=range(0, len(var_types["short"])*2, 2), labels=var)
+        plt.ylim([0, max(df["total"])])
         for x, i in enumerate(mann_whitney):
             pval = i[1]
             if pval > 0.05:
@@ -387,7 +391,8 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
         if save == False:
             plt.show()
         else:
-            plt.savefig(f"{file}_variant_type_boxplot.png")
+            plt.savefig(f"{ctx.obj['outdir']}/variant_type_boxplot.png")
+            plt.clf()
 
     ## histogram
     if hist == True:
@@ -397,7 +402,8 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
         if save == False:
             plt.show()
         else:
-            plt.savefig(f"{file}_variant_type_histogram.png")
+            plt.savefig(f"{ctx.obj['outdir']}/variant_type_histogram.png")
+            plt.clf()
 
 
 def gradientbars(bars, data):
@@ -418,6 +424,8 @@ def gradientbars(bars, data):
 @click.option("-s", "--save", default=False, is_flag=True, help="show or save plot")
 @click.pass_context
 def plot_lengths(ctx, save):
+    mpl.rcParams['axes.spines.right'] = False
+    mpl.rcParams['axes.spines.top'] = False
     l = ctx.invoke(length)
     var = ["DEL", "INS", "INV", "DUP"]
     var = [i for i in var if i not in ctx.obj["ignore_types"]]
@@ -503,7 +511,8 @@ def plot_lengths(ctx, save):
     if save == False:
         plt.show()
     else:
-        plt.savefig(f"{file}_variant_type_boxplot.png")
+        plt.savefig(f"{ctx.obj['outdir']}/variant_length_boxplot.png")
+        plt.clf()
 
 
 
