@@ -310,7 +310,6 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
                 ax.bar(xticks, df[v].tolist(), 0.5, label = v, bottom=df[var[:i]].sum(axis=1), log=True)
         #df.plot(kind="bar", stacked=True)
         plt.ylim([0, max(df["total"])])
-        plt.tight_layout()
         plt.xlim([xticks[0]-1, xticks[-1]+1])
         plt.yscale(scale)
         plt.xticks(ticks = xticks, labels = labels, rotation = 90)
@@ -335,10 +334,12 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
                 norm=mpl.colors.Normalize(vmin=min(df["length"]),vmax=max(df["length"]))
                 plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap="RdYlGn"), ax=ax)
                 plt.ylim(-5/2, max(df["total"])+3)
+        
+        #plt.tight_layout()
         if save == False:
             plt.show()
         else:
-            plt.savefig(f"{ctx.obj['outdir']}/variant_type_stacked_bat_plot.png")
+            plt.savefig(f"{ctx.obj['outdir']}/variant_type_stacked_bar_plot.png", bbox_inches="tight")
             plt.clf()
     
     ## box plot ##
@@ -359,39 +360,68 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
                 var_types["short"].append(df[df["short"] == True][v].tolist())
 
         for i in range(len(var_types["long"])):
-            mann_whitney.append(scipy.stats.mannwhitneyu(var_types["long"][i], var_types["short"][i]))
+            mann_whitney.append(scipy.stats.mannwhitneyu(var_types["short"][i], var_types["long"][i], alternative="greater"))
         #print(mann_whitney)
                 #var_types[v] = [df[df["length"] < threshold][v].tolist(), df[df["length"] >= threshold][v].tolist()]
         #print(var_types)
-        lbox = plt.boxplot(var_types["long"], positions=np.array(range(len(var_types["long"])))*2.0-0.4, sym='', widths=0.6)
-        plt.setp(lbox["boxes"], color = "blue")
-        plt.setp(lbox["whiskers"], color = "blue")
-        plt.setp(lbox["caps"], color = "blue")
-        plt.setp(lbox["medians"], color = "blue")
-        sbox = plt.boxplot(var_types["short"], positions=np.array(range(len(var_types["short"])))*2.0+0.4, sym='', widths=0.6)
-        plt.setp(sbox["boxes"], color = "red")
-        plt.setp(sbox["whiskers"], color = "red")
-        plt.setp(sbox["caps"], color = "red")
-        plt.setp(sbox["medians"], color = "red")
-        plt.plot([], c="blue", label="long")
-        plt.plot([], c="red", label="short")
-        plt.legend()
-        plt.xticks(ticks=range(0, len(var_types["short"])*2, 2), labels=var)
-        plt.ylim([0, max(df["total"])])
-        for x, i in enumerate(mann_whitney):
-            pval = i[1]
+        ### on one axis
+        # lbox = plt.boxplot(var_types["long"], positions=np.array(range(len(var_types["long"])))*2.0-0.4, sym='', widths=0.6)
+        # plt.setp(lbox["boxes"], color = "blue")
+        # plt.setp(lbox["whiskers"], color = "blue")
+        # plt.setp(lbox["caps"], color = "blue")
+        # plt.setp(lbox["medians"], color = "blue")
+        # sbox = plt.boxplot(var_types["short"], positions=np.array(range(len(var_types["short"])))*2.0+0.4, sym='', widths=0.6)
+        # plt.setp(sbox["boxes"], color = "red")
+        # plt.setp(sbox["whiskers"], color = "red")
+        # plt.setp(sbox["caps"], color = "red")
+        # plt.setp(sbox["medians"], color = "red")
+        # plt.plot([], c="blue", label="long")
+        # plt.plot([], c="red", label="short")
+        # plt.legend(loc="upper left")
+        # plt.xticks(ticks=range(0, len(var_types["short"])*2, 2), labels=var)
+        # plt.ylim([0, max(df["total"])])
+        # for x, i in enumerate(mann_whitney):
+        #     pval = i[1]
+        #     if pval > 0.05:
+        #         continue
+        #     elif 0.01 < pval <=0.5:
+        #         plt.annotate("*", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+        #     elif 0.001 < pval <= 0.01:
+        #         plt.annotate("**", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+        #     elif pval <= 0.001:
+        #         plt.annotate("***", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+        ### split axes
+        fig, ax = plt.subplots(1, len(var))
+        for i, v in enumerate(var):
+            lbox = ax[i].boxplot(var_types["long"][i], positions=[0], widths=0.6, boxprops={"color": "blue"}, whiskerprops={"color": "blue"}, capprops={"color": "blue"}, flierprops={"marker": "o", "markersize": 5, "markeredgecolor": "blue"}, medianprops={"color": "blue"}, showfliers=True)
+            # for flier in lbox["fliers"]:
+            #     flier.set(marker="o", color="blue", markersize=20)
+            sbox = ax[i].boxplot(var_types["short"][i], positions=[1], widths=0.6, boxprops={"color": "red"}, whiskerprops={"color": "red"}, capprops={"color": "red"}, flierprops={"marker": "o", "markersize": 5, "markeredgecolor": "red"}, medianprops={"color": "red"}, showfliers=True)
+            # for flier in sbox["fliers"]:
+            #     flier.set(marker="o", color="red", markersize=10)
+            ax[i].spines[["right", "top"]].set_visible(False)
+            if i == 0:
+                ax[i].plot([], c="blue", label="long")
+                ax[i].plot([], c="red", label="short")
+            #ax[i].legend()
+            ax[i].set_xticks(ticks=[0.5], labels=[v])
+            ax[i].set_ylim(0, max(var_types["long"][i]+var_types["short"][i]))
+            pval = mann_whitney[i][1]
             if pval > 0.05:
                 continue
             elif 0.01 < pval <=0.5:
-                plt.annotate("*", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+                ax[i].annotate("*", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
             elif 0.001 < pval <= 0.01:
-                plt.annotate("**", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+                ax[i].annotate("**", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
             elif pval <= 0.001:
-                plt.annotate("***", (x*2, max(var_types["long"][x]+var_types["short"][x])), ha='center', fontsize="large")
+                ax[i].annotate("***", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
+        lgd = fig.legend(loc="upper center", bbox_to_anchor=(0.5, 0))
+        #fig.subplots_adjust(right=0.02)
+        plt.tight_layout()
         if save == False:
             plt.show()
         else:
-            plt.savefig(f"{ctx.obj['outdir']}/variant_type_boxplot.png")
+            plt.savefig(f"{ctx.obj['outdir']}/variant_type_boxplot.png", bbox_extra_artists=(lgd,), bbox_inches='tight')
             plt.clf()
 
     ## histogram
@@ -481,16 +511,8 @@ def plot_lengths(ctx, save):
     #print(var_lengths)
     fig, ax = plt.subplots(1, len(var))
     for i, v in enumerate(var):
-        lbox = ax[i].boxplot(type_lengths["long"][v], positions=[0], sym='', widths=0.6, boxprops={"color": "blue"}, whiskerprops={"color": "blue"}, flierprops={"color": "blue"}, medianprops={"color": "blue"})
-        # ax[i].set(lbox["boxes"], color = "blue")
-        # ax[i].set(lbox["whiskers"], color = "blue")
-        # ax[i].set(lbox["caps"], color = "blue")
-        # ax[i].set(lbox["medians"], color = "red")
-        sbox = ax[i].boxplot(type_lengths["short"][v], positions=[1], sym='', widths=0.6, boxprops={"color": "red"}, whiskerprops={"color": "red"}, flierprops={"color": "red"}, medianprops={"color": "red"})
-        # ax[i].set(sbox["boxes"], color = "red")
-        # ax[i].set(sbox["whiskers"], color = "red")
-        # ax[i].set(sbox["caps"], color = "red")
-        # ax[i].set(sbox["medians"], color = "red")
+        lbox = ax[i].boxplot(type_lengths["long"][v], positions=[0], sym='', widths=0.6, boxprops={"color": "blue"}, whiskerprops={"color": "blue"}, flierprops={"markeredgecolor": "blue"}, medianprops={"color": "blue"})
+        sbox = ax[i].boxplot(type_lengths["short"][v], positions=[1], sym='', widths=0.6, boxprops={"color": "red"}, whiskerprops={"color": "red"}, flierprops={"markeredgecolor": "red"}, medianprops={"color": "red"})
         ax[i].spines[["right", "top"]].set_visible(False)
         if i == 0:
             ax[i].plot([], c="blue", label="long")

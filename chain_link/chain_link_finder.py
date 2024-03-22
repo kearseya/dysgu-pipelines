@@ -506,6 +506,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
         a.append(svgutils.compose.Line([(0, scols*size), (total_width, scols*size)], width=3, color="red"))
         a.save(f"{outname}.svg")
 
+        print("converting to png...")
         cairosvg.svg2png(url=f"{outname}.svg", write_to=f"{outname}.png", scale=2)
         img = PIL.Image.open(f"{outname}.png")
         wsize = int(float(img.size[0])/2)
@@ -1817,10 +1818,12 @@ def plot_dfr(dfr, idf, f, thresh):
         chained_stat = 1
         pass
 
-    # Put a legend to the right of the current axis
+    ## Put a legend to the right of the current axis
     ax.legend(loc='center left', title=f"TL < {thresh} kb", bbox_to_anchor=(1, 0.5), frameon=False)
-    #plt.tight_layout()
-    plt.savefig("{}/chained_vs_threshold_counts.{}.pdf".format(f, idf), transparent=True)
+    ## Put legend top right
+    #ax.legend(loc='upper right', title=f"TL < {thresh} kb", frameon=False)
+    plt.tight_layout()
+    plt.savefig("{}/chained_vs_threshold_counts.{}.pdf".format(f, idf), transparent=True, bbox_inches="tight")
     return chained_stat
 
 
@@ -1834,9 +1837,10 @@ def plot_elbow(x, y, f):
     ax.plot(x, y, zorder=10)
     ymin, ymax = ax.get_ylim()
     ax.set_ylim(ymin, ymax)
-    ax.vlines(kn.knee, ymin, ymax, color="grey", linestyle="--", zorder=1, alpha=0.75)
-    if kn.knee != None:
-        ax.text(kn.knee, max(y), f"x = {round(kn.knee, 5)}\ny = {round(kn.knee_y, 5)}", va="top")
+    ## plot knee line
+    # ax.vlines(kn.knee, ymin, ymax, color="grey", linestyle="--", zorder=1, alpha=0.75)
+    # if kn.knee != None:
+    #     ax.text(kn.knee, max(y), f"x = {round(kn.knee, 5)}\ny = {round(kn.knee_y, 5)}", va="top")
     ax.set_xlabel("Chained P-val")
     ax.set_ylabel("MannWhitneyU")
     ax.spines['top'].set_visible(False)
@@ -1889,7 +1893,7 @@ def plot_chained_vs_non_chained(f, tel, sample_col, stela_col, thresh, stack_uni
     plt.ylabel("SV count")
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.savefig("{}/chained_vs_non-chained.pdf".format(f), transparent=True)
+    plt.savefig("{}/chained_vs_non-chained.pdf".format(f), transparent=True, bbox_inches="tight")
     #plt.show()
     plt.close()
 

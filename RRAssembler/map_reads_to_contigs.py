@@ -208,8 +208,8 @@ def bwa_map(contigs, singles, pairs):
         print("Discarded repetitive", too_rep, "out of", count)
 
 
-def get_dysgu_contigs(contigs):
-    vcfs = glob.glob("../../hawk/filtered/*.vcf")
+def get_dysgu_contigs(contigs, vcfs):
+    vcfs = glob.glob(vcfs)
     conts = defaultdict(list)  # Sample: contigs
     for item in vcfs:
         samp = item.split("/")[-1].split(".")[0]
@@ -251,7 +251,7 @@ def get_dysgu_contigs(contigs):
 
 
 #if __name__ == "__main__":
-def main(regions_dir):
+def main(regions_dir, vcfs):
     target = False  #"NODE_9_length_1501_cov_3.98201"
     contigs = load_contigs(f"{regions_dir}/*/contigs.fasta")
 
@@ -261,7 +261,7 @@ def main(regions_dir):
     singles, pairs = load_reads(regions_dir)
     bwa_map(contigs, singles, pairs)
 
-    dysgu_conts = get_dysgu_contigs(contigs)
+    dysgu_conts = get_dysgu_contigs(contigs, vcfs)
     reads = dysgu_conts
     perform_mapping(reads, contigs)
     # black_list = analyse_result(contigs)

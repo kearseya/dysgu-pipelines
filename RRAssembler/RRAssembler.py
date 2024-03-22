@@ -9,13 +9,15 @@ import plot_contigs
 
 @click.group(name="pipe", invoke_without_command=True)
 @click.option("-b", "--bam-glob", default="/mnt/breast/*.*am")
+@click.option("-v", "--vcf-glob", default="../../hawk/filtered/*.vcf"
 @click.option("-c", "--chain-file", default="../chain_link/chain_out_1/t20_p0.05-0.35/found_chains_p0.2_t20/all_svs.unique.chains.csv")
 @click.option("-r", "--ref", default="/mnt/scwc0010/hg38.fa")
 @click.option("-p", "--pad", default=500)
 @click.pass_context
-def pipe(ctx, bam_glob, chain_file, ref, pad):
+def pipe(ctx, bam_glob, vcf_glob, chain_file, ref, pad):
     ctx.ensure_object(dict)
     ctx.obj["bam_glob"] = bam_glob
+    ctx.obj["vcfs"] = vcf_glob
     ctx.obj["chain_file"] = chain_file
     ctx.obj["ref"] = ref
     ctx.obj["pad"] = pad
@@ -46,7 +48,7 @@ def fetch_and_assemble_pipe(ctx):
 def map_reads_to_contigs_pipe(ctx):
     """ 2nd map reads to contigs """
     print("Mapping reads to contigs...")
-    map_reads_to_contigs.main("regions_all")
+    map_reads_to_contigs.main("regions_all", ctx.obj["vcfs"])
     pass
 
 @pipe.command(name="analyse")
