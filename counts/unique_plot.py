@@ -167,7 +167,7 @@ def plot_SVs(bed_dict, name, order, chrom_lengths, chrom_indexes, output_dir, cy
         fig = plt.figure(figsize=(12,2))
         gs = gridspec.GridSpec(2, 1, height_ratios=[20, 1])
         axarr = [plt.subplot(gs[0]), plt.subplot(gs[1])]
-        fig.subplots_adjust(hspace=0.1)
+        fig.subplots_adjust(hspace=0.1cyto)
         #plt.tight_layout()
 
         axarr[0].axes.set_xticks([])
