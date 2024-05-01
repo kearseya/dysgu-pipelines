@@ -114,6 +114,7 @@ def count(ctx, save):
     total = 0
     counts = {}
     types = ["DEL", "INS", "INV", "DUP", "TRA"]
+    types = [i for i in types if i not in ctx.obj["ignore_types"]]
     for v in files:
         total += 1
         fmt = v[-3:]
@@ -129,7 +130,7 @@ def count(ctx, save):
                 #if list(line.filter.keys())[0] != "lowProb" or float(line.samples[s]["PROB"]) > 0.2 or float(line.samples[s]["SU"]) > 4: 
                 sv_type = line.info["SVTYPE"]
                 if float(line.samples[s]["PROB"]) >= prob_thresholds[sv_type]:
-                    if (sv_type != "TRA" and line.stop-line.pos >= ctx.obj["size_thresh"]) or sv_type in {"TRA", "INS"}:
+                    if (sv_type != "TRA" and line.stop-line.pos >= ctx.obj["size_thresh"]) or sv_type in [i for i in ["TRA", "INS"] if i not in ctx.obj["ignore_types"]]:
                         counts[s][sv_type] += 1
         
         elif fmt == "csv":
@@ -227,6 +228,7 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
     mpl.rcParams['axes.spines.top'] = False
     df = ctx.invoke(count)
     var = ["DEL", "INS", "INV", "DUP", "TRA"] # df.columns[2:].tolist()
+    var = [i for i in var if i not in ctx.obj["ignore_types"]]
     ## reorder table
     if ctx.obj["tlfn"] == None:
         df = df.sort_values(by="total")

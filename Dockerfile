@@ -1,6 +1,10 @@
-FROM ubuntu:latest
+FROM ubuntu:jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# 3.10 not in noble
+# RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common
+# RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential r-base r-cran-randomforest python3.10 python3-pip python3-setuptools python3-dev
 
@@ -29,9 +33,17 @@ RUN cd /app; git clone https://github.com/lh3/bwa.git; cd bwa; make; make instal
 # dodi
 RUN git clone https://github.com/kcleal/dodi.git; cd dodi; pip3 install -r requirements.txt; python3 setup.py install; cd /app
 
+# fix manager for ubuntu noble
+# RUN rm /usr/lib/python3*/EXTERNALLY-MANAGED
+
 # python depedancies
 COPY requirements.txt /app
 RUN pip3 install -r requirements.txt
+
+# packages broken in noble
+# RUN git clone https://github.com/arvkevi/kneed.git && cd kneed && pip3 install -e . && cd ..
+# RUN git clone https://github.com/ogayot/khmer.git && cd khmer && pip3 install . && cd ..
+
 
 # r dependacies
 RUN R -e "install.packages('BiocManager')"

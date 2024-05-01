@@ -1022,7 +1022,7 @@ def add_periferal_stats(ax, scores, samples, tumour_tl, cat, threshold, ss=1, bo
             x[1]["ypos_j"] = [i+offset for i in y]
             ax["score"].scatter(x=x[1]["scores"], y=ypos, color=score_colors[ci], s=2)
             # boxplot
-            ax["score"].boxplot(x[1]["scores"], positions=[offset], vert=False, patch_artist=True, showmeans=True, widths=(ss-(ss/8)), showfliers=False, boxprops=dict(facecolor=score_colors[ci], alpha=0.5, linewidth=2), whiskerprops=dict(linewidth=1, linestyle="--"), capprops=dict(linewidth=2), medianprops=dict(color="red", linewidth=2), meanprops=dict(marker='D', markeredgecolor="black", markerfacecolor="green", markersize=5))
+            ax["score"].boxplot(x[1]["scores"], positions=[offset], vert=False, patch_artist=True, showmeans=True, widths=(ss-(ss/8)), showfliers=False, boxprops=dict(facecolor=score_colors[ci], alpha=0.5, linewidth=0.5), whiskerprops=dict(linewidth=0.5, linestyle="--"), capprops=dict(linewidth=0.5), medianprops=dict(color="red", linewidth=0.5), meanprops=dict(marker='D', markeredgecolor="black", markerfacecolor="green", markersize=5))
 
         # ax["score"].scatter(x=swarm_df["scores"], y=swarm_df["ypos_j"])
         # ax["score"].boxplot(swarm_df["scores"], labels=swarm_df["sample"], vert=False, positions=[i+offy for i in range(1, len(samples)+1)])
