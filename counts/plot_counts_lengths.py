@@ -11,6 +11,7 @@ import operator
 import re
 import os
 import pysam
+import math
 
 class DictParamType(click.ParamType):
     name = "dictionary"
@@ -34,6 +35,10 @@ class DictParamType(click.ParamType):
                 param,
                 ctx
             )
+
+def roundup(x, s):
+    return math.ceil( (x+1) / s) * s
+
 
 @click.group(name="main", invoke_without_command=True)
 @click.argument("indir", type=click.Path(exists=True))
@@ -214,6 +219,8 @@ def length(ctx, save):
     type=click.Choice(["linear", "log", "symlog", "logit"]))
 @click.option("-k", "--kgroups", default=5)
 @click.option("-r", "--real-groups", default=None)
+@click.option("-p", "--prefix", default="DB", help="remove prefix from sample name")
+@click.option("--nlab", default=3, help="crop sample name to nlab length")
 @click.option("--ksort", default=False, is_flag=True)
 @click.option("--lsort", default=True, is_flag=True, help="sort by length col")
 @click.option("--bar", default=True, is_flag=True)
@@ -223,7 +230,7 @@ def length(ctx, save):
 @click.option("--box", default=True, is_flag=True)
 @click.option("--hist", default=False, is_flag=True)
 @click.pass_context
-def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_lines, bar_numbers, bar_scale, box, hist):
+def plot_counts(ctx, save, scale, kgroups, real_groups, prefix, nlab, ksort, lsort, bar, bar_lines, bar_numbers, bar_scale, box, hist):
     mpl.rcParams['axes.spines.right'] = False
     mpl.rcParams['axes.spines.top'] = False
     df = ctx.invoke(count)
@@ -274,8 +281,9 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
     df = df.reset_index()
 
     ## add kmeans labels ##
-    kmeans = KMeans(n_clusters=kgroups, random_state=0).fit(df[var])
-    df["kmeans"] = kmeans.labels_
+    if ksort == True or "kmeans" in bar_lines:
+        kmeans = KMeans(n_clusters=kgroups, random_state=0).fit(df[var])
+        df["kmeans"] = kmeans.labels_
     #print(kmeans.labels_)
     #print(df["kmeans"].tolist())
     #print(df["total"].tolist())
@@ -304,6 +312,7 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
     if bar == True:
         xticks = np.arange(0, len(df))
         labels = df["sample"].tolist()#[i.replace("_filtered.vcf", "") for i in df["sample"].tolist()]
+        labels = [i.replace(prefix, "")[:nlab] for i in labels]
         fig, ax = plt.subplots()
         for i, v in enumerate(var):
             if i == 0:
@@ -311,9 +320,13 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
             else:
                 ax.bar(xticks, df[v].tolist(), 0.5, label = v, bottom=df[var[:i]].sum(axis=1), log=True)
         #df.plot(kind="bar", stacked=True)
-        plt.ylim([0, max(df["total"])])
-        plt.xlim([xticks[0]-1, xticks[-1]+1])
+        #plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
         plt.yscale(scale)
+        ymax = roundup(max(df["total"]), 50)
+        ax.set_ylim((0, int(ymax)))
+        ax.yaxis.set_major_locator(mpl.ticker.MultipleLocator(50))
+        ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(25))
+        plt.xlim([xticks[0]-1, xticks[-1]+1])
         plt.xticks(ticks = xticks, labels = labels, rotation = 90)
         plt.legend(var, loc = "upper left")
         if "kmeans" in  bar_lines:
@@ -335,7 +348,7 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
                 gradientbars(scale_bar, df["length"])
                 norm=mpl.colors.Normalize(vmin=min(df["length"]),vmax=max(df["length"]))
                 plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap="RdYlGn"), ax=ax)
-                plt.ylim(-5/2, max(df["total"])+3)
+                plt.ylim(-5/2, ymax)
         
         #plt.tight_layout()
         if save == False:
@@ -407,18 +420,59 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, ksort, lsort, bar, bar_l
                 ax[i].plot([], c="red", label="short")
             #ax[i].legend()
             ax[i].set_xticks(ticks=[0.5], labels=[v])
-            ax[i].set_ylim(0, max(var_types["long"][i]+var_types["short"][i]))
+            ymax = roundup(max(var_types["long"][i]+var_types["short"][i]), 10)
+            if ymax > 100:
+                ymax = roundup(ymax, 50)
+            print(ymax)
+            ax[i].set_ylim(0, ymax)
+            if ymax <= 50:
+                ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(10))
+                ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(5))
+            elif 50 < ymax <= 100:
+                if ymax % 25 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(25))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
+                elif ymax % 20 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(20))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
+                else:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(10))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(5))
+            else:
+                if ymax % 50 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(50))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(25))
+                elif ymax % 40 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(40))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(20))
+                elif ymax % 25 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(25))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
+                elif ymax % 20 == 0:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(20))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
+                else:
+                    ax[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(10))
+                    ax[i].yaxis.set_minor_locator(mpl.ticker.MultipleLocator(5))
+
+
+
+
+
+
+            #ax[i].set_yticks(list(np.arange(0, ymax, (ymax*1)/5)))
             pval = mann_whitney[i][1]
             if pval > 0.05:
                 continue
-            elif 0.01 < pval <=0.5:
-                ax[i].annotate("*", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
+            elif 0.01 < pval <= 0.05:
+                ax[i].annotate("*", (0.5, ymax), ha='center', fontsize="large")
             elif 0.001 < pval <= 0.01:
-                ax[i].annotate("**", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
+                ax[i].annotate("**", (0.5, ymax), ha='center', fontsize="large")
             elif pval <= 0.001:
-                ax[i].annotate("***", (0.5, max(var_types["long"][i]+var_types["short"][i])), ha='center', fontsize="large")
+                ax[i].annotate("***", (0.5, ymax), ha='center', fontsize="large")
         lgd = fig.legend(loc="upper center", bbox_to_anchor=(0.5, 0))
         #fig.subplots_adjust(right=0.02)
+        #plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
         plt.tight_layout()
         if save == False:
             plt.show()
