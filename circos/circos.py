@@ -171,7 +171,10 @@ def read_file(fp, outdir, tl, cytoband, cnp, prob_thresholds, su_thresholds, siz
 
 
     ## colour scheme
-    type_cols = {"INS": "green", "DEL": "red", "INV": "blue", "DUP": "magenta"}
+    #type_cols = {"INS": "magenta", "DEL": "red", "INV": "blue", "DUP": "green", "TRA": "black"}
+    # pastel
+    #type_cols = {"INS": "#FFCE54", "DEL": "#ED5564", "INV": "#4FC1E8", "DUP": "#ADD568", "TRA": "#AC92EB"}
+    type_cols = {"INS": "yellow", "DEL": "red", "INV": "deepskyblue", "DUP": "lime", "TRA": "darkorchid"}
     
     f = pysam.VariantFile(fp)
     tra_list = []
@@ -202,7 +205,7 @@ def read_file(fp, outdir, tl, cytoband, cnp, prob_thresholds, su_thresholds, siz
             if abs(end-start) < 50000: # required for line to show
                 destination = (name, end+50000, end+50000, low_size-aof) 
             if sv_type != "INS":
-                circle.chord_plot(source, destination, facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
+                circle.chord_plot(source, destination, facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=1.0)
             else:
                 ins_dict[str(name)]["positions"].append(start)
                 #print(f"end-start: {end-start}, rlen: {l.rlen}")
@@ -218,12 +221,12 @@ def read_file(fp, outdir, tl, cytoband, cnp, prob_thresholds, su_thresholds, siz
         else:
             continue
     for t in tra_list:
-        circle.chord_plot(t[0], t[1], facecolor="#000000", linewidth=0.4)
+        circle.chord_plot(t[0], t[1], facecolor=type_cols["TRA"], edgecolor=type_cols["TRA"], linewidth=1.0)
     for key in ins_dict:
         if len(ins_dict[key]["positions"]) == 0:
             continue
         circle.scatterplot(key, data=[1]*len(ins_dict[key]["positions"]), positions=ins_dict[key]["positions"], 
-                raxis_range=(low_size-aof, low_size-dof), facecolor="green", edgecolor="green",  markershape=".", markersize=20)
+                raxis_range=(low_size-aof, low_size-dof), facecolor=type_cols["INS"], edgecolor="green",  markershape=".", markersize=20)
         # circle.barplot(key, positions=ins_dict[key]["positions"], width=ins_dict[key]["widths"], 
         #         data=[1]*len(arcdata_dict[key]["positions"]),
         #         raxis_range=(812, 838), facecolor="green")#, edgecolor="green")#,  markershape=".", markersize=28)
