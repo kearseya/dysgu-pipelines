@@ -81,7 +81,7 @@ class DictParamType(click.ParamType):
 @click.option("-c", "--cytofile", default="hg38_cytoBand.txt", type=str)
 @click.option("--chrom-len", default=None)
 @click.option("--stack-unit", default="telomere length (kb)", hidden=True)
-@click.option("--size-thresh", default=50000, help="SV size filter")
+@click.option("--size-thresh", default=10000, help="SV size filter")
 @click.option("--var-prob", default="INS: 0.2, DEL: 0.3, INV: 0.15, DUP: 0.15, TRA: 0.4", type=DictParamType(), help="SV type prob thresholds")
 # @click.option("--var-su", default="INS: 9, DEL: 9, INV: 6, DUP: 6, TRA: 8", type=DictParamType(), help="SV type supporting reads thresholds")
 @click.pass_context
@@ -116,12 +116,17 @@ def pipe(ctx, indir, outdir, prob, breaks, lower_p, upper_p, np_tests, tl, sep_t
         pass
 
 @pipe.command(name="run")
-@click.option("-p", "--prob", default=0.04)
+@click.option("-p", "--prob", default=0.05)
 @click.option("-b", "--breaks", default=8)
 @click.option("-l", "--chrom-len", default=None)
 @click.option("--plot", is_flag=True, default=True)
+## Subsample variables
+@click.option("--ncols", default=8, help="Number of columns in combined output plot")
+@click.option("--subsets", default=1, help="N subsets to plot")
+@click.option("--subsamples", default=100, help="N samples per subset")
+@click.option("--split", default=0.5, help="% of split group to plot per subset")
 @click.pass_context
-def run(ctx, prob, breaks, chrom_len, plot):
+def run(ctx, prob, breaks, chrom_len, plot, ncols, subsets, subsamples, split):
     PROB = prob
     BREAKS_THRESH = breaks
     if ctx.obj["pval"] != 0.05:
@@ -130,7 +135,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
         BREAKS_THRESH = ctx.obj["bt"]
     indir = ctx.obj["indir"]
     OUTDIR = ctx.obj["outdir"]
-    PLOT_CIRCOS = plot
+
     if ctx.obj["chrom_len"] != None:
         chrom_len = ctx.obj["chrom_len"]
 
@@ -163,8 +168,6 @@ def run(ctx, prob, breaks, chrom_len, plot):
     # Save the randomized output in a different directory
     # OUTDIR = "found_false_positive_chains"
     # vcfs = glob.glob("randomized_breakpoints/*.vcf")
-
-    PLOT_CIRCOS = True
 
     np.random.seed(12345678)
 
@@ -283,7 +286,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
             for line in f.fetch():
                 #if list(line.filter.keys())[0] != "lowProb" or float(line.samples[s]["PROB"]) > 0.2 or float(line.samples[s]["SU"]) > 4: 
                 if float(line.samples[s]["PROB"]) >= prob_thresholds[line.info["SVTYPE"]]:
-                    if (line.info["SVTYPE"] != "TRA" and line.stop-line.pos >= 50000) or line.info["SVTYPE"] == "TRA":
+                    if (line.info["SVTYPE"] != "TRA" and line.stop-line.pos >= ctx.obj["size_thresh"]) or line.info["SVTYPE"] == "TRA":
                         chr1 = line.contig
                         pos1 = line.pos
                         end1 = line.stop
@@ -346,7 +349,6 @@ def run(ctx, prob, breaks, chrom_len, plot):
 
 
     def find_connected(tree, data, chrom, pos, p_val):
-
         dist, ind = tree.query([[pos]], k=len(data))  # k=len(data) to enumerate all neighbours
         pvals = [get_pval(i, ps[chrom]) for i in dist[0]]
         dist, ind = dist.flatten(), ind.flatten()
@@ -356,12 +358,10 @@ def run(ctx, prob, breaks, chrom_len, plot):
             if p < p_val:
                 # Add 1 to i becuase first value is skipped
                 c.add(("{}:{}".format(chrom, int(pos)), "{}:{}".format(chrom, int(data[ind[i + 1]]))))
-
         return c
 
 
     def neigh(s, samp, nn, prob):
-        
         tree1 = nn[samp][s[0]]  # Tree for chromosome 1
         tree2 = nn[samp][s[3]]  # Tree for chromosome 2, (intra or inter)
 
@@ -414,105 +414,165 @@ def run(ctx, prob, breaks, chrom_len, plot):
                                                                    p=pos, nb=neg_b))
 
 
-    def arrange_circos(indir, outdir, outname, lengths, real, prob_v, break_t):
+
+    def arrange_circos(indir, outdir, outname, ncols, lengths, col, col_thresh, subsets, subsamples, split, prob_v, break_t):
+        """
+        Combine all circos plots together
+        """
         print("arranging circos plots...")
         if outdir == None:
             outdir = indir
-        outname = os.path.join(outdir, f"{outname}_p{prob_v}_t{break_t}")
+        outname = f"{outname}_p{prob_v}_t{break_t}"
         svgs = os.listdir(indir)
         svgs = [i for i in svgs if i.endswith(".svg")]
         svgs = sorted(svgs)
-        original_size = 900
-        #nshort = 16
-        ncols = 8
-        #scols = nshort/ncols
-        nrows = ceil(len(svgs) / ncols)
-        size = 300
-        sf = size/original_size
-        total_width = ncols*size
-        total_height = (total_width/ncols)*nrows
+        ntotfiles = len(svgs)
+        
+        if lengths != None:
+            l = pd.read_csv(lengths)
+            l = l.rename({ctx.obj["sample_col"]: "sample"}, axis=1)
+            samples = [i.replace(".svg", "") for i in svgs]
+            l = l[l["sample"].isin(samples)]
+            if col_thresh != None:
+                l["short"] = l.get("short", np.where(l[col] <= float(col_thresh), True, False))
+            else:
+                l["col"] = l.get(col, l["short"])
+            l = l.sort_values(col)
+            tumour_tl = l.set_index("sample")[col].to_dict()
 
-
-        l = pd.read_csv(lengths)
-        l = l.rename({ctx.obj["sample_col"]: "sample", ctx.obj["stela_col"]: "stela"}, axis=1)
-
-        samples = [i.replace(".svg", "") for i in svgs]
-        l = l[l["sample"].isin(samples)]
-        if real == True:
-            l["short"] = l.get("short", np.where(l["stela"] <= ctx.obj["sep_thresh"], True, False))
         else:
-            l["stela"] = l.get("stela", l["short"])
-        l = l.sort_values("stela")#, ascending=False)
+            l = pd.DataFrame({"sample": [i.replace(".svg", "") for i in svgs], "short": True})
+            tumour_tl = {}
+            for i in svgs:
+                tumour_tl[i.replace(".svg", "")] = 1
 
-        if "short_conf" in l.columns:
-            l = l.sort_values("short_conf")
-        short_samples = l[l["short"] == True]["sample"].tolist()
-        scols = ceil(len(short_samples)/ncols)
-        long_samples = l[l["short"] == False]["sample"].tolist()
-        short_files = [i+".svg" for i in short_samples]
-        long_files = [i+".svg" for i in long_samples]
-        svgs = short_files + long_files
-        nfiles = len(svgs)
-        nshort = len(short_files)
+        if f"{col}_conf" in l.columns: # if output from ml model, use confidence of boolean prediction to order
+            l = l.sort_values(f"{col}_conf", ascending=False)
+        shorts = l[l["short"] == True]["sample"].tolist()
+        longs = l[l["short"] == False]["sample"].tolist()
+        all_shorts = shorts.copy()
+        all_longs = longs.copy()
 
-        # short
-        short = sg.SVGFigure(f"{ncols*size}px", f"{scols*size}px")
-        shorts = []
-        r, c = 0, 0
-        for i in svgs[:nshort]:
-            tmp = sg.fromfile(os.path.join(indir, i))#.set_size("300pt")#.getroot()
-            if real == True:
-                tmp.append(svgutils.compose.Text("%.2f"%round(float(l[l["sample"] == i.replace(".svg", "")]["stela"].values[0]), 2), x=275, y=30, size=25, font="sans", weight="lighter"))
+        # Create subsampled groups
+        short_set = []
+        long_set = []
+        nsubsets = 0
+        nsamples = len(svgs)
+        if subsets == 1:
+            short_set.append(list({s: l for s, l in sorted(tumour_tl.items(), key=lambda item: item[1]) if s in shorts}.keys()))
+            long_set.append(list({s: l for s, l in sorted(tumour_tl.items(), key=lambda item: item[1]) if s in longs}.keys()))
+            nsubsets = 1
+        else:
+            for z in range(subsets):
+                if nsamples > subsamples:
+                    short_samples = [shorts[i] for i in sorted(random.sample(range(len(shorts)), min(len(shorts), int(subsamples*split))))]
+                    long_samples = [longs[i] for i in sorted(random.sample(range(len(longs)), min(len(longs), int(subsamples*(1-split)))))] 
+                    short_set.append(list({s: l for s, l in sorted(tumour_tl.items(), key=lambda item: item[1]) if s in short_samples}.keys()))
+                    long_set.append(list({s: l for s, l in sorted(tumour_tl.items(), key=lambda item: item[1]) if s in long_samples}.keys()))
+                    shorts = list(set(shorts).difference(short_samples))
+                    longs = list(set(longs).difference(long_samples))
+                    nsamples = nsamples - len(short_samples) - len(long_samples)
+                elif 0 < nsamples <= subsamples:
+                    short_set.append(shorts)
+                    long_set.append(longs)
+                    nsamples = 0
 
-            #tmp.set_size(f"{50000}px") # doesnt work
-            tmp = tmp.getroot()#.set_size(300)
-            shorts.append(tmp)
-            tmp.moveto(r, c, scale_x=sf*1.25)
-            r += size
-            if r % total_width == 0:
-                c += size
-                r = 0
-        #print(shorts)
-        short.append(shorts)
-        short.save(os.path.join(outdir, f"short_p{prob_v}_t{break_t}.svg"))
+                nsubsets += 1
 
-        # long
-        long = sg.SVGFigure(f"{ncols*size}px", f"{((ncols-nshort)/ncols)*size}px")
-        longs = []
-        r, c = 0, 0
-        for i in svgs[nshort:]:
-            tmp = sg.fromfile(os.path.join(indir, i))
-            if real == True:
-                tmp.append(svgutils.compose.Text("%.2f"%round(float(l[l["sample"] == i.replace(".svg", "")]["stela"].values[0]), 2), x=275, y=30, size=25, font="sans", weight="lighter"))
+                if nsamples == 0:
+                    break
 
-            tmp = tmp.getroot()
+        # task_arrange = progress.add_task("[red]Arranging svgs...", total=ntotfiles)
+        print(nsubsets) 
+        for z in range(nsubsets):
+            short_files = [i+".svg" for i in short_set[z]]
+            long_files = [i+".svg" for i in long_set[z]]
+            svgs = short_files + long_files
+            original_size = 450
+            nrows = ceil(len(svgs) / ncols)
+            size = 300
+            sf = size/original_size
+            total_width = ncols*size
+            total_height = (total_width/ncols)*nrows
+            
+            nfiles = len(svgs)
+            nshort = len(short_files)
+            nlong = len(long_files)
+            srows = ceil(nshort/ncols)
+            lrows = ceil(nlong/ncols)
 
-            longs.append(tmp)
-            tmp.moveto(r, c, scale_x=sf*1.25)
-            r += size
-            if r % total_width == 0:
-                c += size
-                r = 0
+            ## short (True) plotting (all if not ordered)
+            short = sg.SVGFigure(f"{ncols*size}px", f"{srows*size}px")
+            shorts = []
+            r, c = 0, 0
+            for i in svgs[:nshort]:
+                tmp = sg.fromfile(os.path.join(indir, i))#.set_size("300pt")#.getroot()
+                if col_thresh != None: # add order values to plot
+                    tmp.append(svgutils.compose.Text("%.2f"%round(float(l[l["sample"] == i.replace(".svg", "")][col].values[0]), 2), x=275, y=30, size=25, font="sans", weight="lighter"))
 
-        #print(longs)
-        long.append(longs)
-        long.save(os.path.join(outdir, f"long_p{prob_v}_t{break_t}.svg"))
+                tmp = tmp.getroot()#.set_size(300)
+                shorts.append(tmp)
+                tmp.moveto(r, c, scale_x=sf*1.25)
+                r += size
+                if r % total_width == 0:
+                    c += size
+                    r = 0
+                # progress.update(task_arrange, advance=1)
+            #print(shorts)
+            short.append(shorts)
+            if lengths != None:
+                short.save(os.path.join(outdir, f"short_{z}.svg"))
+            else:
+                Figure(f"{total_width}px", f"{total_height}px",
+                        Panel(short.getroot())).save(os.path.join(outdir, f"{outname}_{z}.svg"))
 
-        Figure(f"{total_width}px", f"{total_height}px",
-            Panel(short.getroot()),
-            Panel(long.getroot()).move(0, scols*size)).save(f"{outname}.svg")
+            ## long (False) plotting (if order supplied)
+            if lengths != None:
+                long = sg.SVGFigure(f"{ncols*size}px", f"{lrows*size}px")
+                longs = []
+                r, c, lrows = 0, 0, 1
+                for i in svgs[nshort:]:
+                    tmp = sg.fromfile(os.path.join(indir, i))
+                    if col_thresh != None: # add order values to plot
+                        tmp.append(svgutils.compose.Text("%.2f"%round(float(l[l["sample"] == i.replace(".svg", "")][col].values[0]), 2), x=275, y=30, size=25, font="sans", weight="lighter"))
 
-        a = sg.fromfile(f"{outname}.svg")
-        a.append(svgutils.compose.Line([(0, scols*size), (total_width, scols*size)], width=3, color="red"))
-        a.save(f"{outname}.svg")
+                    tmp = tmp.getroot()
 
-        print("converting to png...")
-        cairosvg.svg2png(url=f"{outname}.svg", write_to=f"{outname}.png", scale=2)
-        img = PIL.Image.open(f"{outname}.png")
-        wsize = int(float(img.size[0])/2)
-        hsize = int(float(img.size[1])/2)
-        img = img.resize((wsize, hsize), 1)
-        img.save(f"{outname}.png")
+                    longs.append(tmp)
+                    tmp.moveto(r, c, scale_x=sf*1.25)
+                    r += size
+                    if r % total_width == 0:
+                        c += size
+                        r = 0
+                        lrows += 1
+                    # progress.update(task_arrange, advance=1)
+
+                    long.append(longs)
+                    long.save(os.path.join(outdir, f"long_{z}.svg"))
+                    total_height = (total_width/ncols)*(srows+lrows)
+
+                    short = sg.fromfile(os.path.join(outdir, f"short_{z}.svg"))
+                    # stick long and short together with short on top
+                    Figure(f"{total_width}px", f"{total_height}px",
+                        Panel(short.getroot()).move(0, 0),
+                        Panel(long.getroot()).move(0, srows*size)).save(os.path.join(outdir, f"{outname}_{z}.svg"))
+
+                    a = sg.fromfile(os.path.join(outdir, f"{outname}_{z}.svg"))
+                    a.append(svgutils.compose.Line([(0, srows*size), (total_width, srows*size)], width=3, color="red"))
+                    a.save(os.path.join(outdir, f"{outname}_{z}.svg"))
+            
+            ## convert SVG to PNG
+            # task_convert = progress.add_task("[cyan]Converting to png...", total=None)
+            cairosvg.svg2png(url=os.path.join(outdir, f"{outname}_{z}.svg"), write_to=os.path.join(outdir, f"{outname}_{z}.png"), scale=2)
+            img = PIL.Image.open(os.path.join(outdir, f"{outname}_{z}.png"))
+            wsize = int(float(img.size[0])/2)
+            hsize = int(float(img.size[1])/2)
+            # progress.update(task_convert)
+            ## better line visability
+            # task_resize = progress.add_task("[purple]Resizing...", total=None)
+            img = img.resize((wsize, hsize), 1)
+            img.save(os.path.join(outdir, f"{outname}_{z}.png"))
+            # progress.update(task_resize)
 
     def find_neighbours(sample, probability, plot_circos):
         # Clear old results
@@ -677,15 +737,13 @@ def run(ctx, prob, breaks, chrom_len, plot):
 
             aof = 45
             dof = 44
-            circle = pycircos.Gcircle(figsize=(10, 10))
+            circle = pycircos.Gcircle(figsize=(5, 5))
             nl = {}
             for i in cl:
                 nl[i.replace("chr", "")] = cl[i]
            
             ## create chromosomes
-            order_of_chr = [f"{i}" for i in range (1, 23)]
-            order_of_chr.append("X")
-            order_of_chr.append("Y")
+            order_of_chr = [f"{i}" for i in range (1, 23)] + ["X", "Y"]
             for i in order_of_chr:
                 name    = i
                 length  = nl[i]
@@ -730,7 +788,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
                     source = (name, int(start1), int(start1), low_size-aof)
                     destination = (name, int(end1), int(end1), low_size-aof)
                     #print(source, destination)
-                    circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.2)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
+                    circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.3)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
                 elif chr1 != chr2 and name in order_of_chr and name2 in order_of_chr: 
                     #start2 = start #l.info["CHR2_POS"]
                     #end2 = start2
@@ -738,7 +796,7 @@ def run(ctx, prob, breaks, chrom_len, plot):
                 else:
                     continue
             for t in tra_list:
-                circle.chord_plot(t[0], t[1], facecolor="grey", linewidth=0.2)
+                circle.chord_plot(t[0], t[1], facecolor="grey", linewidth=0.3)
 
             ## plot links
             tra_list = []
@@ -755,14 +813,14 @@ def run(ctx, prob, breaks, chrom_len, plot):
                             source = (name, int(start1), int(start2), low_size-aof)
                             destination = (name, int(end1), int(end2), low_size-aof)
                             #print(source, destination)
-                            circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.4)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
+                            circle.chord_plot(source, destination, facecolor=color, edgecolor=color, linewidth=0.6)#facecolor=type_cols[sv_type], edgecolor=type_cols[sv_type], linewidth=0.4)
                         elif chr1 != chr2 and name in order_of_chr and name2 in order_of_chr: 
                             #end2 = start2
                             tra_list.append(((name, int(start1), int(start2), low_size-aof), (name2, int(end1), int(end2), low_size-aof), color))
                         else:
                             continue
                     for t in tra_list:
-                        circle.chord_plot(t[0], t[1], facecolor=t[2], edgecolor=t[2], linewidth=0.4)
+                        circle.chord_plot(t[0], t[1], facecolor=t[2], edgecolor=t[2], linewidth=0.6)
             
             circle.figure.savefig(f"{OUTDIR}/circos/{sample}.svg")
        
@@ -795,7 +853,10 @@ def run(ctx, prob, breaks, chrom_len, plot):
             df = pd.concat([df, pd.DataFrame([[s]+list(x) for x in all_breaks[s]], columns=["Sample", "chrom1", "start1", "end1", "chrom2", "start2", "end2", "chained", "color"])])
         print(df)
         
-        arrange_circos(os.path.join(OUTDIR, "circos"), os.path.join(OUTDIR, "circos"), "all", ctx.obj["tlfn"], True, PROB, BREAKS_THRESH)
+        if plot == True:
+            #arrange_circos(indir, outdir, outname, ncols, lengths, col, col_thresh, progress, subsets, subsamples, split, prob_v, break_t)
+            #with Progress() as progress:
+            arrange_circos(os.path.join(OUTDIR, "circos"), os.path.join(OUTDIR, "circos"), "all", ncols, ctx.obj["tlfn"], ctx.obj["stela_col"], ctx.obj["sep_thresh"], subsets, subsamples, split, PROB, BREAKS_THRESH)
         #print( len(results), len(df))
         df["pval"] = PROB
         #df["chained"] = [i[0] for i in results]
@@ -819,7 +880,8 @@ def run(ctx, prob, breaks, chrom_len, plot):
             print(prob_v, "-"*80)
             res, rr = process_data(prob_v)
             if plot == True:
-                arrange_circos(os.path.join(OUTDIR, "circos"), os.path.join(OUTDIR, "circos"), "all", ctx.obj["tlfn"], True, prob_v, BREAKS_THRESH)
+                # with Progress() as progress:
+                arrange_circos(os.path.join(OUTDIR, "circos"), os.path.join(OUTDIR, "circos"), "all", ncols, ctx.obj["tlfn"], ctx.obj["stela_col"], ctx.obj["sep_thresh"], subsets, subsamples, split, prob_v, BREAKS_THRESH)
 
             df = pd.DataFrame(columns=["Sample", "chrom1", "start1", "end1", "chrom2", "start2", "end2", "chained", "color"])
             for s in all_breaks.keys():
