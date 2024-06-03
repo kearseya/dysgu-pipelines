@@ -134,7 +134,8 @@ def read_file(fp, outdir, tl, cytoband, cnp, prob_thresholds, su_thresholds, siz
         low_size = 750
         up_size = 800
         cndf = pd.read_csv(cnp)
-        sample = os.path.basename(fp).replace(".vcf", "")
+        cndf["sampleID"] = cndf["sampleID"].astype(str)
+        sample = str(os.path.basename(fp).replace(".vcf", ""))
         cn = cndf[cndf["sampleID"] == sample]
         cn["len"] = cn["end.pos"] - cn["start.pos"]
         cn["clip"] = cn["mean"].clip(upper=3)
@@ -245,7 +246,8 @@ def arrange(indir, outdir, outname, ncols, lengths, col, col_thresh, progress, s
     
     if lengths != None:
         l = pd.read_csv(lengths)
-        samples = [i.replace(".svg", "") for i in svgs]
+        l["sample"] = l["sample"].astype(str)
+        samples = [str(i.replace(".svg", "")) for i in svgs]
         l = l[l["sample"].isin(samples)]
         if col_thresh != None:
             l["short"] = l.get("short", np.where(l[col] <= float(col_thresh), True, False))
