@@ -126,7 +126,7 @@ def count(ctx, save):
                 
         if fmt == "vcf":
             f = pysam.VariantFile(v)
-            s = os.path.basename(v).replace(".vcf", "")
+            s = str(os.path.basename(v).replace(".vcf", ""))
             counts[s] = {}
             for t in types:
                 counts[s][t] = 0
@@ -153,6 +153,7 @@ def count(ctx, save):
     df["sample"] = df.index
     df = df.reset_index(drop=True)
     df = df[["sample"] + types + ["total"]]
+    df["sample"] = df["sample"].astype("string")
     if save:
         df.to_csv(out, index=False)
     return df
@@ -246,6 +247,7 @@ def plot_counts(ctx, save, scale, kgroups, real_groups, prefix, nlab, ksort, lso
         if ctx.obj["length_col"] != "length":
             ldf = ldf.rename({ctx.obj["length_col"]: "length"}, axis=1)
         ldf = ldf[["sample", "length"]]
+        ldf["sample"] = ldf["sample"].astype("string")
         df = pd.merge(df, ldf, on="sample")
         print(df)
         print(df["length"].dtype)
