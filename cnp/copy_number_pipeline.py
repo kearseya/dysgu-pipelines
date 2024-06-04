@@ -2048,7 +2048,7 @@ def gainloss(ctx):
     Subtract this background.
     """
     sns.set_style("white")
-    cn = pd.read_csv(os.path.join("cnpinter", ctx.obj["tag"], "copyNumber_io", "segmented.copynumber.csv"), index_col=0)
+    cn = pd.read_csv(os.path.join("cnpinter", ctx.obj["tag"], "copyNumber_io", "segmented.copynumber.csv"), index_col=0, low_memory=False)
     cn["sampleID"] = cn["sampleID"].astype(str)
     #cn["sampleID"] = ["DB" + str(i) for i in cn["sampleID"]]  # Add back in the DB information
     analysed_samples = os.listdir(os.path.join("cnpinter", ctx.obj["tag"], "normalized_gc_map_wav"))
@@ -2137,7 +2137,8 @@ def gainloss(ctx):
 
 
     def plot_g_v_l(uni, tag, gl):
-        uni = uni[uni["sampleID"].isin(analysed_samples)]
+        # uni = uni[uni["sampleID"].isin(analysed_samples)]
+        uni = uni[uni["sampleID"].isin(list(tumour_tl.keys()))]
         sl = dict(zip(samples_all, tel_lengths))
         recs = []
         l = []

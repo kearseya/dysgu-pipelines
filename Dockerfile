@@ -14,7 +14,7 @@ RUN apt-get install -y --no-install-recommends cython3 python3-pip
 
 RUN apt-get install -y --no-install-recommends libghc-zlib-dev zlib1g-dev zlib1g libbz2-dev liblzma-dev libcurl4-openssl-dev libcrypto++-dev libssl-dev libdeflate-dev automake autoconf cmake 
 
-RUN apt-get install -y --no-install-recommends bedtools poppler-utils imagemagick
+RUN apt-get install -y --no-install-recommends bedtools poppler-utils imagemagick ghostscript
 
 WORKDIR /app
 
@@ -62,3 +62,5 @@ COPY RRAssembler /app/RRAssembler
 
 # compile contig assembly
 RUN cd /app/RRAssembler/; chmod +x compile_commands.sh; ./compile_commands.sh; cd /app
+
+RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
