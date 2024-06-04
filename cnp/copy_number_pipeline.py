@@ -2072,7 +2072,7 @@ def gainloss(ctx):
     # print(all_bg)
     # print(d_all)
 
-    d_all["Background"] = [all_bg[i] for i in d_all["sampleID"] if i in all_bg]
+    # d_all["Background"] = [all_bg[i] for i in d_all["sampleID"] if i in all_bg]
 
     data = d_all.copy()
 
@@ -2250,10 +2250,10 @@ def gainloss(ctx):
     data["Gain"] = [1 if i > ignore_thresh else 0 for i in list(data["mean"])]
     data["Loss"] = [1 if i < -ignore_thresh else 0 for i in list(data["mean"])]
 
-    data = data.sort_values("Background")
-    #uni = data[(data.start_unique == 1) & (data.end_unique == 1)]
+    # data = data.sort_values("Background")
+    # uni = data[(data.start_unique == 1) & (data.end_unique == 1)]
 
-    #common = data[(data.start_unique == 0) & (data.end_unique == 0)]
+    # common = data[(data.start_unique == 0) & (data.end_unique == 0)]
 
     recs = []
     for idx, r in data.groupby("sampleID"):
