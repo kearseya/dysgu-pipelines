@@ -1915,6 +1915,7 @@ def plot_elbow(x, y, f):
 def plot_chained_vs_non_chained(f, tel, sample_col, stela_col, thresh, stack_unit):
     # Collect the total number of SVs
     df = pd.read_csv(os.path.join(f, "all_svs.unique.chains.csv"), sep=",", index_col=None)
+    df["Sample"] = df["Sample"].astype(str)
     # print(df)
     tel = pd.read_csv(tel)
     tel = tel.rename({sample_col: "Sample", stela_col: "tel_length"}, axis=1)
@@ -1930,7 +1931,7 @@ def plot_chained_vs_non_chained(f, tel, sample_col, stela_col, thresh, stack_uni
     allowed = set(["chr" + str(i) for i in range(1, 23)] + ["chrX", "chrY"] + [str(i) for i in range(1, 23)] + ["X", "Y"])
     df = df[df["chrom1"].isin(allowed) & df["chrom2"].isin(allowed)]
     df["Sample"] = df["Sample"].astype(str)
-    df["tel_length"] = df["tel_length"].astype(float)
+    # df["tel_length"] = df["tel_length"].astype(float)
     df["chained"] = df["chained"].astype(bool)
 
     x = df.sort_values(["tel_length", "chained"])[["tel_length", "Sample", "chained", "ID"]]
@@ -1938,9 +1939,16 @@ def plot_chained_vs_non_chained(f, tel, sample_col, stela_col, thresh, stack_uni
     length_list = x["tel_length"].tolist()
     #x["Sample"] = [i[2:] for i in x["Sample"]]
     x = x.groupby(["tel_length", "Sample", "chained"]).agg("count")
+    print(x)
     x = x.unstack(level=2)
+    print(x)
     x.columns = x.columns.droplevel(level=0)
+    print(x)
     x = x.fillna(0)
+    print(x)
+    x[True] = x[True].astype(int)
+    x[False] = x[False].astype(int)
+    print(x)
 
     ax = x.plot(kind="bar", stacked=True, colormap=ListedColormap(sns.color_palette("PuBu", 4)),
            figsize=(12, 6), edgecolor="grey", lw=0.25)

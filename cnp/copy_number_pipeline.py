@@ -2049,9 +2049,10 @@ def gainloss(ctx):
     """
     sns.set_style("white")
     cn = pd.read_csv(os.path.join("cnpinter", ctx.obj["tag"], "copyNumber_io", "segmented.copynumber.csv"), index_col=0)
+    cn["sampleID"] = cn["sampleID"].astype(str)
     #cn["sampleID"] = ["DB" + str(i) for i in cn["sampleID"]]  # Add back in the DB information
     analysed_samples = os.listdir(os.path.join("cnpinter", ctx.obj["tag"], "normalized_gc_map_wav"))
-    analysed_samples = [i.split(".")[0].replace("_cov", "") for i in analysed_samples]
+    analysed_samples = [str(i.split(".")[0].replace("_cov", "")) for i in analysed_samples]
     cn_samp = {samp: v for samp, v in cn.groupby("sampleID")}
 
     # Background is tumor: normal
