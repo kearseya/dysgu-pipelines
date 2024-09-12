@@ -710,7 +710,7 @@ def compare(ctx):
     #print(tumour_tl)
     #print(signals)
 
-    def make_copynumber_input():
+    def make_copynumber_input(winsize):
         df_cn = pd.DataFrame()
         # Save a file for the copynumber R package
         # Order by telomere length, shortest to longest
@@ -738,7 +738,7 @@ def compare(ctx):
             # Add generic bed info
             if count == 0:
                 df_cn["chromosome"] = c_df["chromosome"]
-                df_cn["pos"] = c_df["start"] + 5000  # The middle point
+                df_cn["pos"] = c_df["start"] + winsize/2  # The middle point
                 count += 1
 
             # Sample subtract the parental background:
@@ -848,7 +848,7 @@ def compare(ctx):
         os.makedirs(os.path.join("output", ctx.obj["tag"], "graphs"))
 
     # Subtract background
-    make_copynumber_input()
+    make_copynumber_input(ctx.obj["winsize"])
     subtract_bg()
 
 
