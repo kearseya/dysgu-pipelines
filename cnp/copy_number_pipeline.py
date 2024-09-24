@@ -2143,14 +2143,17 @@ def gainloss(ctx):
         recs = []
         l = []
         for idx, r in uni.groupby("sampleID"):
-            sample_tel_length = "{} - {}".format(r.sampleID.iloc[0], format(round(sl[r.sampleID.iloc[0]], 2), ".2f"))
+            sample_tel_length = "{} - {}".format(r.sampleID.iloc[0][:3], format(round(sl[r.sampleID.iloc[0]], 2), ".2f"))
             l.append(float(format(round(sl[r.sampleID.iloc[0]], 2), ".2f")))
             recs.append({"Sample": sample_tel_length,#r.sampleID.iloc[0],
-                        "CNV": r.Gain.sum(), "Type": "Gain"})
+                "CNV": r.Gain.sum(), "Type": "Gain", "Length": float(format(round(sl[r.sampleID.iloc[0]], 2), ".2f"))})
             recs.append({"Sample": sample_tel_length, #r.sampleID.iloc[0],
-                        "CNV": r.Loss.sum(), "Type": "Loss"})
+                        "CNV": r.Loss.sum(), "Type": "Loss", "Length": float(format(round(sl[r.sampleID.iloc[0]], 2), ".2f"))})
 
         uni = pd.DataFrame.from_records(recs)
+        uni = uni.sort_values("Length")
+        uni = uni.reset_index(drop=True)
+
         print(uni)
 
         # uni_all = uni.copy()
@@ -2170,7 +2173,9 @@ def gainloss(ctx):
         ax["gl"].grid(False)
         
         #plt.subplots_adjust(left=0.05, bottom=0.4, right=0.9)
-        names = ["{} - {}".format(i, format(round(j, 2), ".2f")) for i, j in zip(samples_all, tel_lengths)]
+        #names = ["{} - {}".format(i, format(round(j, 2), ".2f")) for i, j in zip(samples_all, tel_lengths)]
+        names = uni["Sample"].tolist()
+
         n_short = len([i for i in tel_lengths if i <= ctx.obj["thresh"]])
 
         sns.barplot(x="Sample", y="CNV", hue="Type", data=uni, ax=ax["gl"],
